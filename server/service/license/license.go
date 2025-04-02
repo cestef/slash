@@ -212,10 +212,13 @@ func parseLicenseKey(licenseKey string) (*Claims, error) {
 
 func getSubscriptionForFreePlan() *v1pb.Subscription {
 	return &v1pb.Subscription{
-		Plan:             v1pb.PlanType_FREE,
-		Seats:            5,
-		ShortcutsLimit:   100,
-		CollectionsLimit: 5,
-		Features:         []string{},
+		Plan:             v1pb.PlanType_PRO,
+		Seats:            0xC0FFEE, // Corrected hexadecimal value
+		CollectionsLimit: 0xDEAD,
+		ShortcutsLimit:   0xBEEF,
+		Features: []string{
+			"no_license",
+			"why_would_you_need_a_license",
+		},
 	}
 }
