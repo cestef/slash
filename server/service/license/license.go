@@ -12,12 +12,8 @@ import (
 	v1pb "github.com/yourselfhosted/slash/proto/gen/api/v1"
 	storepb "github.com/yourselfhosted/slash/proto/gen/store"
 	"github.com/yourselfhosted/slash/server/profile"
-	"github.com/yourselfhosted/slash/server/service/license/lemonsqueezy"
 	"github.com/yourselfhosted/slash/store"
 )
-
-//go:embed slash.public.pem
-var slashPublicRSAKey string
 
 type LicenseService struct {
 	Profile *profile.Profile
@@ -146,35 +142,10 @@ func validateLicenseKey(licenseKey string) (*ValidateResult, error) {
 			Seats:       claims.Seats,
 		}
 		result.Features = getDefaultFeatures(result.Plan)
-		for _, feature := range claims.Features {
-			featureType, ok := validateFeatureString(feature)
-			if ok {
-				result.Features = append(result.Features, featureType)
-			}
-		}
+
 		plan := v1pb.PlanType(v1pb.PlanType_value[claims.Plan])
 		if plan == v1pb.PlanType_PLAN_TYPE_UNSPECIFIED {
 			return nil, errors.New("invalid plan")
-		}
-		return result, nil
-	}
-
-	// Try to validate the license key with the license server.
-	validateResponse, err := lemonsqueezy.ValidateLicenseKey(licenseKey, "")
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to validate license key")
-	}
-	if validateResponse.Valid {
-		result := &ValidateResult{
-			Plan:     v1pb.PlanType_PRO,
-			Features: getDefaultFeatures(v1pb.PlanType_PRO),
-		}
-		if validateResponse.LicenseKey.ExpiresAt != nil && *validateResponse.LicenseKey.ExpiresAt != "" {
-			expiresTime, err := time.Parse(time.RFC3339Nano, *validateResponse.LicenseKey.ExpiresAt)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to parse license key expires time")
-			}
-			result.ExpiresTime = expiresTime
 		}
 		return result, nil
 	}
@@ -184,30 +155,20 @@ func validateLicenseKey(licenseKey string) (*ValidateResult, error) {
 }
 
 func parseLicenseKey(licenseKey string) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(licenseKey, &Claims{}, func(token *jwt.Token) (any, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-
-		key, err := jwt.ParseRSAPublicKeyFromPEM([]byte(slashPublicRSAKey))
-		if err != nil {
-			return nil, err
-		}
-
-		return key, nil
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse token")
-	}
-	if token == nil || !token.Valid {
-		return nil, errors.New("invalid token")
-	}
-
-	claims, ok := token.Claims.(*Claims)
-	if !ok {
-		return nil, errors.New("invalid claims")
-	}
-	return claims, nil
+	inAHundredYears := time.Now().Add(time.Hour * 24 * 365 * 100)
+	return &Claims{
+		Owner: "me",
+		Plan:  "PRO",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(inAHundredYears),
+		},
+		Trial: false,
+		Seats: 0xDEAD,
+		Features: []string{
+			"no_license",
+			"why_would_you_need_a_license",
+		},
+	}, nil
 }
 
 func getSubscriptionForFreePlan() *v1pb.Subscription {
