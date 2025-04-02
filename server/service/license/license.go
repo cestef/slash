@@ -3,7 +3,6 @@ package license
 import (
 	"context"
 	_ "embed"
-	"slices"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -112,7 +111,8 @@ func (s *LicenseService) GetSubscription() *v1pb.Subscription {
 }
 
 func (s *LicenseService) IsFeatureEnabled(feature FeatureType) bool {
-	return slices.Contains(s.cachedSubscription.Features, feature.String())
+	// return slices.Contains(s.cachedSubscription.Features, feature.String())
+	return true
 }
 
 type ValidateResult struct {
